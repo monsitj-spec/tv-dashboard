@@ -177,6 +177,7 @@ footer{display:flex; align-items:center; justify-content:center; gap:10px; paddi
         <button class="lang-btn" data-lang="en">EN</button>
       </div>
       <div class="status-pill"><span id="connDot" class="dot"></span><span id="connText">Connecting…</span></div>
+      <div class="status-pill" id="fallbackPill" style="display:none; color:var(--warn); border-color:rgba(242,184,75,0.3);"><span id="fallbackText"></span></div>
       <div class="clock"><span id="clockTime">--:--:--</span><span class="date" id="clockDate">-</span></div>
     </div>
   </header>
@@ -196,7 +197,7 @@ footer{display:flex; align-items:center; justify-content:center; gap:10px; paddi
    CONFIG — แก้ตรงนี้ที่เดียวให้ตรงกับระบบจริงของคุณ / Edit this block only
    ===================================================================== */
 const CONFIG = {
-  API_URL: '',
+  API_URL: 'https://script.google.com/a/macros/minebea.co.th/s/AKfycbzxYiG1AeJqQwV-baymQFbxoyfKrdQZiAJscJG8J98p3SeSnXpd_1wteAGoBm_dznzUkQ/exec?page=tv',
   ROTATE_MS: 15000,
   REFRESH_MS: 5 * 60 * 1000,
 
@@ -248,6 +249,7 @@ const STRINGS = {
     staleUpdating:'กำลังอัปเดต…',
     errorText:'ดึงข้อมูลไม่สำเร็จ — แสดงข้อมูลล่าสุด',
     demoFlag:'ข้อมูลตัวอย่าง — ยังไม่เชื่อมต่อ Google Sheets จริง',
+    fallbackNote:'แสดงข้อมูลล่าสุดวันที่ ',
     pages:{
       shipments:{eyebrow:'การติดตามตู้คอนเทนเนอร์', title:'สถานะ Shipment วันนี้'},
       trucks:{eyebrow:'กิจกรรมหน้าประตู', title:'Truck Check-in วันนี้'},
@@ -278,6 +280,7 @@ const STRINGS = {
     staleUpdating:'Updating…',
     errorText:'Fetch failed — showing last known data',
     demoFlag:'DEMO DATA — not connected to Google Sheets',
+    fallbackNote:'Showing latest data from ',
     pages:{
       shipments:{eyebrow:'Container Tracking', title:"Today's Shipment Status"},
       trucks:{eyebrow:'Gate Activity', title:"Today's Truck Check-in"},
@@ -442,7 +445,10 @@ async function fetchData(){
     if(!res.ok) throw new Error('HTTP '+res.status);
     const json = await res.json();
     STATE.raw = json; STATE.demo = false;
+    STATE.isFallbackDate = !!json.isFallbackDate;
+    STATE.displayDate = json.displayDate || '';
     setConn('live','liveText');
+    updateFallbackPill();
   }catch(err){
     console.warn('Fetch failed, using last known / demo data:', err);
     if(!STATE.raw){ STATE.raw = DEMO; STATE.demo = true; }
@@ -456,6 +462,15 @@ function setConn(kind, key){
   document.getElementById('connText').textContent = t(key);
   document.getElementById('demoFlag').textContent = t('demoFlag');
   document.getElementById('demoFlag').classList.toggle('show', STATE.demo);
+}
+function updateFallbackPill(){
+  const pill = document.getElementById('fallbackPill');
+  if(STATE.isFallbackDate && STATE.displayDate){
+    document.getElementById('fallbackText').textContent = t('fallbackNote') + STATE.displayDate;
+    pill.style.display = 'flex';
+  } else {
+    pill.style.display = 'none';
+  }
 }
 
 /* =====================================================================
@@ -779,6 +794,7 @@ function applyLanguage(){
   document.getElementById('deptLine').textContent = t('dept');
   document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active', b.dataset.lang===LANG));
   setConn(STATE.connKind, STATE.connKey);
+  updateFallbackPill();
   buildPages();
   goToPage(currentPage);
   tickClock();
