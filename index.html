@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logistics Command Board — MinebeaMitsumi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B1120;
+  --panel:#141D33;
+  --panel-2:#1A2540;
+  --line:rgba(255,255,255,0.07);
+  --line-soft:rgba(255,255,255,0.04);
+  --ink:#EDF0FA;
+  --ink-dim:#9FACC9;
+  --ink-faint:#5E6A8C;
+
+  --blue:#4C8DFF;
+  --blue-deep:#1B3E8C;
+  --teal:#2FBF9F;
+  --amber:#F2B84B;
+  --coral:#F06B7A;
+  --purple:#9C8CFB;
+
+  --good:#3FCB8F;
+  --warn:#F2B84B;
+  --bad:#F0576B;
+
+  --radius-lg:24px;
+  --radius-md:18px;
+  --font-display:'Oswald',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  width:100%;height:100%;
+  background:
+    radial-gradient(1100px 550px at 10% -15%, rgba(76,141,255,0.10), transparent 60%),
+    radial-gradient(900px 500px at 105% 8%, rgba(156,140,251,0.07), transparent 55%),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+#pulseRail{position:fixed; top:0; left:0; height:3px; width:100%; background:var(--panel-2); z-index:60;}
+#pulseFill{height:100%; width:0%; background:linear-gradient(90deg, var(--blue), var(--purple)); transition:width .25s linear;}
+
+.stage{height:100vh; width:100vw; display:flex; flex-direction:column; padding:32px 44px 24px;}
+
+header{display:flex; align-items:center; justify-content:space-between; padding-bottom:20px; margin-bottom:20px; border-bottom:1px solid var(--line);}
+.brand{display:flex; align-items:center; gap:16px;}
+.brand-mark{
+  width:46px; height:46px; border-radius:13px;
+  background:linear-gradient(135deg, var(--blue-deep), #0C1A3E);
+  border:1px solid rgba(76,141,255,0.35);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-display); font-weight:600; font-size:19px; color:var(--ink);
+  position:relative;
+}
+.brand-mark::after{content:''; position:absolute; right:-5px; top:-5px; width:16px; height:16px; background:var(--coral); border-radius:50%; opacity:.85;}
+.brand-text .dept{font-family:var(--font-display); font-weight:500; font-size:14px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint);}
+.brand-text .title{font-family:var(--font-display); font-weight:500; font-size:25px; letter-spacing:.01em;}
+.brand-text .title b{color:var(--blue); font-weight:600;}
+
+.header-right{display:flex; align-items:center; gap:18px;}
+.lang-toggle{display:flex; background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px;}
+.lang-btn{border:none; background:transparent; color:var(--ink-faint); font-family:var(--font-mono); font-size:12px; font-weight:500; padding:7px 13px; border-radius:999px; cursor:pointer; letter-spacing:.05em; transition:background .2s, color .2s;}
+.lang-btn.active{background:var(--blue); color:#081026; font-weight:700;}
+.status-pill{display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:12.5px; color:var(--ink-dim); background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:7px 14px;}
+.dot{width:7px; height:7px; border-radius:50%; background:var(--ink-faint);}
+.dot.live{background:var(--good); box-shadow:0 0 7px var(--good);}
+.dot.stale{background:var(--warn); box-shadow:0 0 7px var(--warn);}
+.dot.error{background:var(--bad); box-shadow:0 0 7px var(--bad);}
+.clock{font-family:var(--font-mono); font-weight:500; font-size:26px; letter-spacing:.02em; text-align:right;}
+.clock .date{display:block; font-size:11.5px; color:var(--ink-faint); font-weight:400; letter-spacing:.06em; margin-top:2px;}
+
+main{flex:1; min-height:0; position:relative;}
+.page{position:absolute; inset:0; opacity:0; transform:translateY(12px); pointer-events:none; transition:opacity .55s ease, transform .55s ease; display:flex; flex-direction:column; min-height:0;}
+.page.active{opacity:1; transform:translateY(0); pointer-events:auto;}
+.page-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px;}
+.page-eyebrow{font-family:var(--font-mono); font-size:12.5px; color:var(--blue); letter-spacing:.16em; text-transform:uppercase;}
+.page-title{font-family:var(--font-display); font-size:32px; font-weight:500; margin-top:5px;}
+
+.kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px;}
+.kpi{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-md); padding:18px 20px; display:flex; flex-direction:column; gap:10px;}
+.kpi .top{display:flex; align-items:center; gap:8px;}
+.kpi .swatch{width:9px; height:9px; border-radius:50%;}
+.kpi .label{font-size:12.5px; color:var(--ink-dim); letter-spacing:.02em;}
+.kpi .value{font-family:var(--font-display); font-size:38px; font-weight:500; line-height:1;}
+.kpi .sub{font-size:11.5px; color:var(--ink-faint); font-family:var(--font-mono);}
+
+.chart-row{display:grid; grid-template-columns:340px 1fr; gap:18px; margin-bottom:18px; flex-shrink:0;}
+.chart-panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-lg); padding:22px;}
+.chart-panel h3{font-family:var(--font-display); font-weight:500; font-size:15px; color:var(--ink-dim); margin-bottom:14px; letter-spacing:.03em;}
+
+.donut-panel{display:flex; flex-direction:column; align-items:center;}
+.donut-wrap{position:relative; width:172px; height:172px; margin-bottom:18px;}
+.donut-ring{width:100%; height:100%; border-radius:50%;}
+.donut-hole{position:absolute; inset:24px; border-radius:50%; background:var(--panel); display:flex; flex-direction:column; align-items:center; justify-content:center;}
+.donut-hole .num{font-family:var(--font-display); font-size:30px; font-weight:600; line-height:1;}
+.donut-hole .lbl{font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.08em; margin-top:4px;}
+.legend{width:100%; display:flex; flex-direction:column; gap:10px;}
+.legend-row{display:flex; align-items:center; gap:10px; font-size:13.5px; color:var(--ink-dim);}
+.legend-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+.legend-row .name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.legend-row .val{font-family:var(--font-mono); color:var(--ink); font-size:13px;}
+
+.bars-panel{display:flex; flex-direction:column; justify-content:center; gap:13px;}
+.bar-row{display:flex; align-items:center; gap:12px;}
+.bar-label{width:132px; font-size:13.5px; color:var(--ink-dim); flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.bar-track{flex:1; height:12px; background:var(--panel-2); border-radius:8px; overflow:hidden;}
+.bar-fill{height:100%; border-radius:8px;}
+.bar-val{width:58px; text-align:right; font-family:var(--font-mono); font-size:13px; color:var(--ink);}
+
+.table-wrap{flex:1; min-height:0; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-lg); overflow:hidden; display:flex; flex-direction:column;}
+.table-scroll{flex:1; overflow:hidden; position:relative;}
+table{width:100%; border-collapse:collapse;}
+thead th{text-align:left; font-family:var(--font-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); padding:13px 22px; background:var(--panel-2); border-bottom:1px solid var(--line);}
+tbody td{padding:13px 22px; font-size:15px; border-bottom:1px solid var(--line-soft); color:var(--ink);}
+tbody tr:last-child td{border-bottom:none;}
+.badge{display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11.5px; padding:5px 11px; border-radius:999px; font-weight:500; letter-spacing:.02em;}
+.badge.good{background:rgba(63,203,143,0.13); color:var(--good);}
+.badge.warn{background:rgba(242,184,75,0.13); color:var(--warn);}
+.badge.bad{background:rgba(240,87,122,0.13); color:var(--bad);}
+.badge.neutral{background:rgba(159,172,201,0.13); color:var(--ink-dim);}
+.empty-state{flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; color:var(--ink-faint); gap:8px; padding:40px;}
+.empty-state .big{font-family:var(--font-display); font-size:20px; color:var(--ink-dim);}
+
+footer{display:flex; align-items:center; justify-content:center; gap:10px; padding-top:16px;}
+.dots{display:flex; gap:8px;}
+.pdot{width:32px; height:4px; border-radius:3px; background:var(--line); transition:background .3s;}
+.pdot.active{background:var(--blue);}
+.page-label{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-faint); letter-spacing:.1em; margin-left:14px; text-transform:uppercase;}
+
+.demo-flag{position:fixed; bottom:14px; right:20px; z-index:70; font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); background:rgba(0,0,0,0.25); border:1px solid var(--line); padding:5px 10px; border-radius:8px; display:none;}
+.demo-flag.show{display:block;}
+
+/* ---------- Progress panel (page 4) ---------- */
+.progress-panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-lg); padding:22px 24px; margin-bottom:16px;}
+.progress-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+.progress-head h3{font-family:var(--font-display); font-weight:500; font-size:16px; color:var(--ink-dim);}
+.progress-tags{display:flex; gap:8px;}
+.ptrack{height:16px; background:var(--panel-2); border-radius:10px; overflow:hidden; margin-bottom:10px;}
+.pfill{height:100%; border-radius:10px; background:linear-gradient(90deg, var(--teal), var(--good)); display:flex; align-items:center; justify-content:flex-end; padding-right:10px; font-family:var(--font-mono); font-size:11px; color:#08170F; font-weight:700; transition:width .5s ease;}
+.progress-sub{font-size:12.5px; color:var(--ink-faint); font-family:var(--font-mono);}
+
+.time-row{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:16px;}
+.time-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-md); padding:18px 20px; text-align:center;}
+.time-card .tlabel{font-size:12.5px; color:var(--ink-dim); margin-bottom:10px;}
+.time-card .tvalue{font-family:var(--font-display); font-size:30px; font-weight:500;}
+
+.completion-panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-lg); padding:22px 24px; margin-bottom:16px;}
+</style>
+</head>
+<body>
+
+<div id="pulseRail"><div id="pulseFill"></div></div>
+
+<div class="stage">
+  <header>
+    <div class="brand">
+      <div class="brand-mark">MM</div>
+      <div class="brand-text">
+        <div class="dept" id="deptLine">Logistics &amp; Fleet Tracking</div>
+        <div class="title">Command <b>Board</b></div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="lang-toggle" id="langToggle">
+        <button class="lang-btn active" data-lang="th">TH</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+      <div class="status-pill"><span id="connDot" class="dot"></span><span id="connText">Connecting…</span></div>
+      <div class="clock"><span id="clockTime">--:--:--</span><span class="date" id="clockDate">-</span></div>
+    </div>
+  </header>
+
+  <main id="pages"></main>
+
+  <footer>
+    <div class="dots" id="dots"></div>
+    <div class="page-label" id="pageLabel"></div>
+  </footer>
+</div>
+
+<div class="demo-flag" id="demoFlag">DEMO DATA</div>
+
+<script>
+/* =====================================================================
+   CONFIG — แก้ตรงนี้ที่เดียวให้ตรงกับระบบจริงของคุณ / Edit this block only
+   ===================================================================== */
+const CONFIG = {
+  API_URL: '',
+  ROTATE_MS: 15000,
+  REFRESH_MS: 5 * 60 * 1000,
+
+  // ตรงกับ Code.gs จริง: มีแค่ 2 ชีตหลักคือ Shipments กับ DailyOrders
+  // (ไม่มีชีต "Form Responses 2" แยกต่างหาก — ระบบรวมข้อมูลรถ/ตู้ไว้ใน Shipments ชีตเดียว)
+  SHEETS: {
+    shipments: 'Shipments',
+    dailyOrders: 'DailyOrders',
+    trucks: 'Shipments'   // ใช้ชีตเดียวกับ shipments เพราะ Truck Reg./Driver Name อยู่ในนี้อยู่แล้ว
+  },
+
+  FIELD_HINTS: {
+    status:    ['status','สถานะ'],
+    container: ['container no','container','ตู้'],
+    eta:       ['date','eta','กำหนดถึง'],
+    port:      ['port','ท่าเรือ'],
+    customer:  ['port','ท่าเรือ'],
+    truckPlate:['truck reg','truck','ทะเบียน','plate'],
+    driver:    ['driver name','driver','คนขับ'],
+    arrival:   ['truck arrival','arrival','เวลาเข้า'],
+    orderNo:   ['order no','order','เลขที่'],
+    qty:       ['qty','quantity','จำนวน'],
+    date:      ['date','วันที่'],
+
+    // ตรงกับคอลัมน์จริงใน SHIPMENT_HEADERS ของ Code.gs
+    startLoading:  ['start loading'],
+    finishLoading: ['finish loading'],
+    releaseTime:   ['release time'],
+    matchedOrder:  ['matched','ตรงกับ order']
+  },
+
+  // ใช้ Shipments เป็นแหล่งข้อมูลหน้า 4 (Progress/Avg Time) ด้วย
+  PROGRESS_SHEET: 'Shipments'
+};
+
+const PALETTE = ['#4C8DFF','#2FBF9F','#F2B84B','#F06B7A','#9C8CFB','#6B7699'];
+
+/* =====================================================================
+   i18n — TH / EN
+   ===================================================================== */
+let LANG = 'th';
+
+const STRINGS = {
+  th:{
+    dept:'ระบบติดตามโลจิสติกส์และยานพาหนะ',
+    connecting:'กำลังเชื่อมต่อ…',
+    liveText:'เชื่อมต่อสด',
+    staleDemo:'ยังไม่ตั้งค่า API_URL — แสดงข้อมูลตัวอย่าง',
+    staleUpdating:'กำลังอัปเดต…',
+    errorText:'ดึงข้อมูลไม่สำเร็จ — แสดงข้อมูลล่าสุด',
+    demoFlag:'ข้อมูลตัวอย่าง — ยังไม่เชื่อมต่อ Google Sheets จริง',
+    pages:{
+      shipments:{eyebrow:'การติดตามตู้คอนเทนเนอร์', title:'สถานะ Shipment วันนี้'},
+      trucks:{eyebrow:'กิจกรรมหน้าประตู', title:'Truck Check-in วันนี้'},
+      orders:{eyebrow:'การส่งมอบ', title:'สรุป Daily Order'},
+      progress:{eyebrow:'ประสิทธิภาพการทำงาน', title:'ความคืบหน้า & เวลาเฉลี่ย'}
+    },
+    progress:{
+      title:'ความคืบหน้าเทียบ Daily Order', matched:'รายการที่ตรงกับ Order แล้ว',
+      pending:'รอดำเนินการ', unmatched:'ไม่พบข้อมูลตรงกัน',
+      totalToday:'ตู้ทั้งหมด (วันนี้)', completed:'เสร็จสมบูรณ์', inProgress:'กำลังดำเนินการ', pendingCard:'รอดำเนินการ',
+      completionTitle:'% ความสำเร็จวันนี้', completionSub:'รายการเสร็จสมบูรณ์',
+      avgWait:'เวลารอเฉลี่ย', avgLoading:'เวลาโหลดเฉลี่ย', avgRelease:'เวลาปล่อยรถเฉลี่ย', avgTotal:'เวลารวมเฉลี่ย', hrsUnit:'ชม.'
+    },
+    kpiShipment:{inTransit:'กำลังขนส่ง', atPort:'ถึงท่าเรือแล้ว', delivered:'ส่งมอบแล้ว', delayed:'ล่าช้า', unit:'ตู้ทั้งหมด'},
+    kpiTruck:{total:'รวมวันนี้', checkedIn:'เข้าโรงงานแล้ว', pending:'รอดำเนินการ', released:'ออกแล้ว', unit:'คัน'},
+    kpiOrder:{orders:'ออเดอร์', totalQty:'จำนวนรวม', customers:'ท่าเรือ', avg:'เฉลี่ย/รายการ', unit:'รายการ'},
+    chart:{statusDist:'สัดส่วนสถานะ', byPort:'จำนวนตู้ตามท่าเรือ', checkinByHour:'จำนวนรถตามช่วงเวลา', orderShare:'สัดส่วนออเดอร์ตามท่าเรือ', qtyByCustomer:'จำนวนตามท่าเรือ'},
+    table:{container:'ตู้คอนเทนเนอร์', customer:'ท่าเรือ', port:'ท่าเรือ', eta:'กำหนดถึง', status:'สถานะ', time:'เวลา', plate:'ทะเบียนรถ', driver:'คนขับ', orderNo:'เลขที่ออเดอร์', qty:'จำนวน', date:'วันที่'},
+    centerLabel:{shipments:'ตู้ทั้งหมด', trucks:'คันวันนี้', orders:'ออเดอร์'},
+    empty:{shipments:'ยังไม่มีข้อมูล Shipment', trucks:'ยังไม่มีรถเช็คอินวันนี้', orders:'ยังไม่มีข้อมูล Daily Order', hint:'ตรวจสอบชื่อชีตใน CONFIG.SHEETS และการเชื่อมต่อ API_URL'},
+    notSpecified:'ไม่ระบุ', notSpecifiedTime:'ไม่ระบุเวลา', defaultStatus:'เช็คอินแล้ว', unitCar:' คัน'
+  },
+  en:{
+    dept:'Logistics & Fleet Tracking',
+    connecting:'Connecting…',
+    liveText:'Live',
+    staleDemo:'API_URL not set — showing sample data',
+    staleUpdating:'Updating…',
+    errorText:'Fetch failed — showing last known data',
+    demoFlag:'DEMO DATA — not connected to Google Sheets',
+    pages:{
+      shipments:{eyebrow:'Container Tracking', title:"Today's Shipment Status"},
+      trucks:{eyebrow:'Gate Activity', title:"Today's Truck Check-in"},
+      orders:{eyebrow:'Fulfillment', title:'Daily Order Summary'},
+      progress:{eyebrow:'Operational Performance', title:'Progress & Average Time'}
+    },
+    progress:{
+      title:'Progress vs. Daily Order', matched:'matched to order',
+      pending:'Pending', unmatched:'Unmatched',
+      totalToday:'Total Containers (Today)', completed:'Completed', inProgress:'In Progress', pendingCard:'Pending',
+      completionTitle:"Today's Completion %", completionSub:'completed',
+      avgWait:'Avg. Wait Time', avgLoading:'Avg. Loading Time', avgRelease:'Avg. Release Process', avgTotal:'Avg. Total Time', hrsUnit:'Hrs.'
+    },
+    kpiShipment:{inTransit:'In Transit', atPort:'At Port', delivered:'Delivered', delayed:'Delayed', unit:'total containers'},
+    kpiTruck:{total:'Total Today', checkedIn:'Checked-in', pending:'Pending', released:'Released', unit:'trucks'},
+    kpiOrder:{orders:'Orders', totalQty:'Total Qty', customers:'Ports', avg:'Avg / Order', unit:'orders'},
+    chart:{statusDist:'Status distribution', byPort:'Shipments by port', checkinByHour:'Check-ins by hour', orderShare:'Order share by port', qtyByCustomer:'Qty by port'},
+    table:{container:'Container', customer:'Port', port:'Port', eta:'ETA', status:'Status', time:'Time', plate:'Truck Plate', driver:'Driver', orderNo:'Order No.', qty:'Qty', date:'Date'},
+    centerLabel:{shipments:'total containers', trucks:'trucks today', orders:'orders'},
+    empty:{shipments:'No shipment data yet', trucks:'No trucks checked in today', orders:'No daily order data yet', hint:'Check the sheet names in CONFIG.SHEETS and the API_URL connection'},
+    notSpecified:'Unspecified', notSpecifiedTime:'No time', defaultStatus:'Checked-in', unitCar:' trucks'
+  }
+};
+
+function t(path){
+  const parts = path.split('.');
+  let node = STRINGS[LANG];
+  for(const p of parts){ node = node ? node[p] : undefined; }
+  return node ?? path;
+}
+
+/* =====================================================================
+   DEMO DATA
+   ===================================================================== */
+const DEMO = {
+  updatedAtDisplay: new Date().toISOString().slice(0,19).replace('T',' '),
+  data: {
+    Shipments: [
+      {Status:'In Transit', 'Container No':'MSKU 771204-5', ETA:'2026-07-05', Port:'Laem Chabang', Customer:'Denso'},
+      {Status:'At Port', 'Container No':'TCLU 552310-1', ETA:'2026-07-03', Port:'Laem Chabang', Customer:'Aisin'},
+      {Status:'Delayed', 'Container No':'CMAU 908213-9', ETA:'2026-07-02', Port:'Map Ta Phut', Customer:'NMB Thai'},
+      {Status:'Delivered', 'Container No':'HLXU 449102-3', ETA:'2026-07-01', Port:'Laem Chabang', Customer:'Toyota'},
+      {Status:'In Transit', 'Container No':'OOLU 223190-7', ETA:'2026-07-06', Port:'Laem Chabang', Customer:'Sumitomo'},
+      {Status:'At Port', 'Container No':'MSCU 118820-4', ETA:'2026-07-03', Port:'Map Ta Phut', Customer:'Denso'},
+      {Status:'In Transit', 'Container No':'FCIU 220981-2', ETA:'2026-07-07', Port:'Laem Chabang', Customer:'Aisin'},
+      {Status:'Delivered', 'Container No':'GESU 340221-6', ETA:'2026-07-01', Port:'Map Ta Phut', Customer:'Toyota'}
+    ],
+    'DailyOrders': [
+      {'Order No':'DO-4021', Customer:'Denso', Qty:'1200', Date:'2026-07-03'},
+      {'Order No':'DO-4022', Customer:'Aisin', Qty:'860', Date:'2026-07-03'},
+      {'Order No':'DO-4023', Customer:'Toyota', Qty:'2100', Date:'2026-07-03'},
+      {'Order No':'DO-4024', Customer:'NMB Thai', Qty:'540', Date:'2026-07-03'},
+      {'Order No':'DO-4025', Customer:'Sumitomo', Qty:'990', Date:'2026-07-03'}
+    ],
+    'Form Responses 2': [
+      {Timestamp:'2026-07-03 07:42', 'Truck Plate':'70-8821 ระยอง', Driver:'สมชาย ใจดี', Status:'Completed', Port:'Laem Chabang', 'Start Loading':'2026-07-03 08:00', 'Finish Loading':'2026-07-03 09:10', 'Release Time':'2026-07-03 09:40', 'Order No':'DO-4021'},
+      {Timestamp:'2026-07-03 08:15', 'Truck Plate':'71-2290 ชลบุรี', Driver:'วิชัย พรมมา', Status:'Completed', Port:'Laem Chabang', 'Start Loading':'2026-07-03 08:30', 'Finish Loading':'2026-07-03 09:45', 'Release Time':'2026-07-03 10:05', 'Order No':'DO-4022'},
+      {Timestamp:'2026-07-03 09:03', 'Truck Plate':'70-1145 ระยอง', Driver:'อนุชา แสงทอง', Status:'In Progress', Port:'Map Ta Phut', 'Start Loading':'2026-07-03 09:20', 'Finish Loading':'', 'Release Time':'', 'Order No':'DO-4023'},
+      {Timestamp:'2026-07-03 09:31', 'Truck Plate':'72-6634 ชลบุรี', Driver:'ประยุทธ์ ทองดี', Status:'Pending', Port:'Laem Chabang', 'Start Loading':'', 'Finish Loading':'', 'Release Time':'', 'Order No':''},
+      {Timestamp:'2026-07-03 10:12', 'Truck Plate':'70-9982 ระยอง', Driver:'ศักดิ์ชัย มีสุข', Status:'In Progress', Port:'Map Ta Phut', 'Start Loading':'2026-07-03 10:25', 'Finish Loading':'', 'Release Time':'', 'Order No':'DO-4024'}
+    ]
+  }
+};
+
+/* =====================================================================
+   Helpers
+   ===================================================================== */
+function findField(row, hints){
+  if(!row) return null;
+  const keys = Object.keys(row);
+  for(const k of keys){
+    const lk = k.toLowerCase();
+    if(hints.some(h => lk.includes(h.toLowerCase()))) return k;
+  }
+  return null;
+}
+function getVal(row, hints){ const f = findField(row, hints); return f ? (row[f] ?? '') : ''; }
+function statusClass(s){
+  s = (s||'').toString().toLowerCase();
+  if(/delay|late|ปัญหา|ล่าช้า/.test(s)) return 'bad';
+  if(/pending|wait|รอ/.test(s)) return 'warn';
+  if(/deliver|release|complete|เสร็จ|checked/.test(s)) return 'good';
+  return 'neutral';
+}
+function isToday(dateStr){
+  if(!dateStr) return true;
+  const d = new Date(dateStr);
+  if(isNaN(d)) return true;
+  const now = new Date();
+  return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+}
+function groupCount(rows, hints){
+  const out = {};
+  rows.forEach(r=>{
+    const key = (getVal(r, hints) || t('notSpecified')).toString().trim() || t('notSpecified');
+    out[key] = (out[key]||0) + 1;
+  });
+  return out;
+}
+function groupSum(rows, groupHints, valueHints){
+  const out = {};
+  rows.forEach(r=>{
+    const key = (getVal(r, groupHints) || t('notSpecified')).toString().trim() || t('notSpecified');
+    const val = parseFloat((getVal(r, valueHints)||'0').toString().replace(/,/g,'')) || 0;
+    out[key] = (out[key]||0) + val;
+  });
+  return out;
+}
+function toEntries(obj, limit){ return Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0, limit||8); }
+
+function renderDonut(hostId, entries, centerLabel){
+  const host = document.getElementById(hostId);
+  const total = entries.reduce((s,[,v])=>s+v,0) || 1;
+  let cum = 0;
+  const stops = entries.map(([label,val],i)=>{
+    const pct = val/total*100;
+    const s = `${PALETTE[i%PALETTE.length]} ${cum}% ${cum+pct}%`;
+    cum += pct;
+    return s;
+  });
+  const gradient = entries.length ? `conic-gradient(${stops.join(',')})` : 'conic-gradient(var(--panel-2) 0% 100%)';
+  host.innerHTML = `
+    <div class="donut-wrap">
+      <div class="donut-ring" style="background:${gradient}"></div>
+      <div class="donut-hole"><div class="num">${total.toLocaleString()}</div><div class="lbl">${centerLabel}</div></div>
+    </div>
+    <div class="legend">
+      ${entries.map(([label,val],i)=>`
+        <div class="legend-row">
+          <span class="legend-dot" style="background:${PALETTE[i%PALETTE.length]}"></span>
+          <span class="name">${label}</span>
+          <span class="val">${val.toLocaleString()}</span>
+        </div>`).join('') || `<div class="legend-row"><span class="name">${t('notSpecified')}</span></div>`}
+    </div>`;
+}
+function renderBars(hostId, entries, unit){
+  const host = document.getElementById(hostId);
+  const max = Math.max(...entries.map(e=>e[1]), 1);
+  host.innerHTML = entries.map(([label,val],i)=>`
+    <div class="bar-row">
+      <div class="bar-label">${label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(val/max*100).toFixed(0)}%; background:${PALETTE[i%PALETTE.length]}"></div></div>
+      <div class="bar-val">${val.toLocaleString()}${unit||''}</div>
+    </div>`).join('') || `<div class="legend-row"><span class="name">${t('notSpecified')}</span></div>`;
+}
+
+/* =====================================================================
+   Data fetch
+   ===================================================================== */
+let STATE = { raw: null, demo: true, connKind:'stale', connKey:'connecting' };
+
+async function fetchData(){
+  if(!CONFIG.API_URL){
+    STATE.raw = DEMO; STATE.demo = true;
+    setConn('stale', 'staleDemo');
+    render();
+    return;
+  }
+  try{
+    setConn('stale','staleUpdating');
+    const res = await fetch(CONFIG.API_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const json = await res.json();
+    STATE.raw = json; STATE.demo = false;
+    setConn('live','liveText');
+  }catch(err){
+    console.warn('Fetch failed, using last known / demo data:', err);
+    if(!STATE.raw){ STATE.raw = DEMO; STATE.demo = true; }
+    setConn('error','errorText');
+  }
+  render();
+}
+function setConn(kind, key){
+  STATE.connKind = kind; STATE.connKey = key;
+  document.getElementById('connDot').className = 'dot ' + kind;
+  document.getElementById('connText').textContent = t(key);
+  document.getElementById('demoFlag').textContent = t('demoFlag');
+  document.getElementById('demoFlag').classList.toggle('show', STATE.demo);
+}
+
+/* =====================================================================
+   Render
+   ===================================================================== */
+function render(){
+  if(!STATE.raw) return;
+  const d = STATE.raw.data || {};
+  renderShipments(d[CONFIG.SHEETS.shipments] || []);
+  renderTrucks(d[CONFIG.SHEETS.trucks] || []);
+  renderOrders(d[CONFIG.SHEETS.dailyOrders] || []);
+  renderProgress(d[CONFIG.PROGRESS_SHEET] || d[CONFIG.SHEETS.trucks] || [], d[CONFIG.SHEETS.dailyOrders] || [], STATE.raw.progress || null);
+}
+
+function renderShipments(rows){
+  const el = document.getElementById('page-shipments');
+  if(!rows.length){ el.querySelector('.dynamic').innerHTML = emptyState(t('empty.shipments')); return; }
+
+  const counts = {inTransit:0, atPort:0, delivered:0, delayed:0};
+  rows.forEach(r=>{
+    const s = (getVal(r, CONFIG.FIELD_HINTS.status)||'').toLowerCase();
+    if(/delay|ล่าช้า/.test(s)) counts.delayed++;
+    else if(/deliver|เสร็จ/.test(s)) counts.delivered++;
+    else if(/port|ท่าเรือ/.test(s)) counts.atPort++;
+    else counts.inTransit++;
+  });
+  const k = STRINGS[LANG].kpiShipment;
+  const statusEntries = [[k.inTransit,counts.inTransit],[k.atPort,counts.atPort],[k.delivered,counts.delivered],[k.delayed,counts.delayed]].filter(e=>e[1]>0);
+  const portEntries = toEntries(groupCount(rows, CONFIG.FIELD_HINTS.port), 6);
+
+  const rowsHtml = rows.slice(0,5).map(r=>{
+    const status = getVal(r, CONFIG.FIELD_HINTS.status) || '-';
+    return `<tr>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.container) || '-'}</td>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.customer) || '-'}</td>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.port) || '-'}</td>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.eta) || '-'}</td>
+      <td><span class="badge ${statusClass(status)}">${status}</span></td>
+    </tr>`;
+  }).join('');
+
+  el.querySelector('.dynamic').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[0]}"></span><span class="label">${k.inTransit}</span></div><div class="value">${counts.inTransit}</div><div class="sub">${k.unit}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[1]}"></span><span class="label">${k.atPort}</span></div><div class="value">${counts.atPort}</div><div class="sub">${k.unit}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[2]}"></span><span class="label">${k.delivered}</span></div><div class="value">${counts.delivered}</div><div class="sub">${k.unit}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[3]}"></span><span class="label">${k.delayed}</span></div><div class="value">${counts.delayed}</div><div class="sub">${k.unit}</div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-panel donut-panel"><h3 style="align-self:flex-start">${t('chart.statusDist')}</h3><div id="donut-shipments"></div></div>
+      <div class="chart-panel bars-panel"><h3>${t('chart.byPort')}</h3><div id="bars-shipments"></div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll"><table>
+        <thead><tr><th>${t('table.container')}</th><th>${t('table.customer')}</th><th>${t('table.port')}</th><th>${t('table.eta')}</th><th>${t('table.status')}</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>
+    </div>`;
+  renderDonut('donut-shipments', statusEntries, t('centerLabel.shipments'));
+  renderBars('bars-shipments', portEntries);
+}
+
+function renderTrucks(rows){
+  const el = document.getElementById('page-trucks');
+  const today = rows.filter(r => isToday(getVal(r, CONFIG.FIELD_HINTS.arrival) || getVal(r, CONFIG.FIELD_HINTS.date)));
+  if(!today.length){ el.querySelector('.dynamic').innerHTML = emptyState(t('empty.trucks')); return; }
+
+  const checkedIn = today.filter(r=>/checked|เข้า/i.test(getVal(r, CONFIG.FIELD_HINTS.status)||'')).length;
+  const pending = today.filter(r=>/pending|รอ/i.test(getVal(r, CONFIG.FIELD_HINTS.status)||'')).length;
+  const released = today.filter(r=>/release|เสร็จ/i.test(getVal(r, CONFIG.FIELD_HINTS.status)||'')).length;
+
+  const k = STRINGS[LANG].kpiTruck;
+  const statusEntries = [[k.checkedIn,checkedIn],[k.pending,pending],[k.released,released]].filter(e=>e[1]>0);
+  const hourCounts = {};
+  today.forEach(r=>{
+    const ts = getVal(r, CONFIG.FIELD_HINTS.arrival);
+    const m = (ts||'').toString().match(/(\d{1,2}):\d{2}/);
+    const hourKey = m ? `${m[1].padStart(2,'0')}:00` : t('notSpecifiedTime');
+    hourCounts[hourKey] = (hourCounts[hourKey]||0) + 1;
+  });
+  const hourEntries = toEntries(hourCounts, 6).sort((a,b)=>a[0].localeCompare(b[0]));
+
+  const rowsHtml = today.slice(0,5).map(r=>{
+    const status = getVal(r, CONFIG.FIELD_HINTS.status) || t('defaultStatus');
+    return `<tr>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.arrival) || '-'}</td>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.truckPlate) || '-'}</td>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.driver) || '-'}</td>
+      <td><span class="badge ${statusClass(status)}">${status}</span></td>
+    </tr>`;
+  }).join('');
+
+  el.querySelector('.dynamic').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[0]}"></span><span class="label">${k.total}</span></div><div class="value">${today.length}</div><div class="sub">${k.unit}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[1]}"></span><span class="label">${k.checkedIn}</span></div><div class="value">${checkedIn}</div><div class="sub">${k.unit}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[2]}"></span><span class="label">${k.pending}</span></div><div class="value">${pending}</div><div class="sub">${k.unit}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[3]}"></span><span class="label">${k.released}</span></div><div class="value">${released}</div><div class="sub">${k.unit}</div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-panel donut-panel"><h3 style="align-self:flex-start">${t('chart.statusDist')}</h3><div id="donut-trucks"></div></div>
+      <div class="chart-panel bars-panel"><h3>${t('chart.checkinByHour')}</h3><div id="bars-trucks"></div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll"><table>
+        <thead><tr><th>${t('table.time')}</th><th>${t('table.plate')}</th><th>${t('table.driver')}</th><th>${t('table.status')}</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>
+    </div>`;
+  renderDonut('donut-trucks', statusEntries, t('centerLabel.trucks'));
+  renderBars('bars-trucks', hourEntries, t('unitCar'));
+}
+
+function renderOrders(rows){
+  const el = document.getElementById('page-orders');
+  const today = rows.filter(r => isToday(getVal(r, CONFIG.FIELD_HINTS.date)));
+  const list = today.length ? today : rows;
+  if(!list.length){ el.querySelector('.dynamic').innerHTML = emptyState(t('empty.orders')); return; }
+
+  let totalQty = 0;
+  list.forEach(r=>{ totalQty += parseFloat((getVal(r, CONFIG.FIELD_HINTS.qty)||'0').toString().replace(/,/g,'')) || 0; });
+  const byCustomerQty = groupSum(list, CONFIG.FIELD_HINTS.customer, CONFIG.FIELD_HINTS.qty);
+  const qtyEntries = toEntries(byCustomerQty, 6);
+  const k = STRINGS[LANG].kpiOrder;
+
+  const rowsHtml = list.slice(0,5).map(r=>`
+    <tr>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.orderNo) || '-'}</td>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.customer) || '-'}</td>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.qty) || '-'}</td>
+      <td>${getVal(r, CONFIG.FIELD_HINTS.date) || '-'}</td>
+    </tr>`).join('');
+
+  el.querySelector('.dynamic').innerHTML = `
+    <div class="kpi-row">
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[0]}"></span><span class="label">${k.orders}</span></div><div class="value">${list.length}</div><div class="sub">${k.unit}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[1]}"></span><span class="label">${k.totalQty}</span></div><div class="value">${totalQty.toLocaleString()}</div><div class="sub">${k.unit}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[2]}"></span><span class="label">${k.customers}</span></div><div class="value">${Object.keys(byCustomerQty).length}</div><div class="sub">${k.unit}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[3]}"></span><span class="label">${k.avg}</span></div><div class="value">${list.length?Math.round(totalQty/list.length).toLocaleString():0}</div><div class="sub">${k.unit}</div></div>
+    </div>
+    <div class="chart-row">
+      <div class="chart-panel donut-panel"><h3 style="align-self:flex-start">${t('chart.orderShare')}</h3><div id="donut-orders"></div></div>
+      <div class="chart-panel bars-panel"><h3>${t('chart.qtyByCustomer')}</h3><div id="bars-orders"></div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll"><table>
+        <thead><tr><th>${t('table.orderNo')}</th><th>${t('table.customer')}</th><th>${t('table.qty')}</th><th>${t('table.date')}</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>
+    </div>`;
+  renderDonut('donut-orders', toEntries(groupCount(list, CONFIG.FIELD_HINTS.customer), 6), t('centerLabel.orders'));
+  renderBars('bars-orders', qtyEntries);
+}
+
+function parseTimeVal(v){
+  if(!v) return null;
+  const s = v.toString().trim();
+  const d = new Date(s.includes(' ') || s.includes('T') ? s : ('2000-01-01 '+s));
+  return isNaN(d) ? null : d;
+}
+function hoursBetween(a,b){
+  if(!a || !b) return null;
+  const diff = (b - a) / 36e5;
+  return diff >= 0 ? diff : null;
+}
+function fmtHrs(h){
+  if(h===null || isNaN(h)) return '0:00';
+  const whole = Math.floor(h);
+  const mins = Math.round((h - whole) * 60);
+  return `${whole}:${mins.toString().padStart(2,'0')}`;
+}
+
+function renderProgress(rows, orderRows, progressPayload){
+  const el = document.getElementById('page-progress');
+  const p = STRINGS[LANG].progress;
+
+  if(progressPayload){
+    renderProgressFromPayload(el, p, progressPayload);
+    return;
+  }
+
+  if(!rows.length){ el.querySelector('.dynamic').innerHTML = emptyState(t('empty.shipments')); return; }
+
+  const today = rows.filter(r => isToday(getVal(r, CONFIG.FIELD_HINTS.arrival) || getVal(r, CONFIG.FIELD_HINTS.date)));
+  const list = today.length ? today : rows;
+
+  // Progress vs Daily Order
+  const totalOrders = orderRows.length || list.length;
+  const matched = list.filter(r=>{
+    const s = (getVal(r, CONFIG.FIELD_HINTS.matchedOrder)||'').toString().toLowerCase();
+    return /yes|matched|ตรง|true/.test(s) || !!getVal(r, CONFIG.FIELD_HINTS.orderNo);
+  }).length;
+  const pendingCount = list.filter(r=>/pending|รอ/i.test(getVal(r, CONFIG.FIELD_HINTS.status)||'')).length;
+  const unmatchedCount = Math.max(list.length - matched, 0);
+  const progressPct = totalOrders ? Math.min(100, Math.round(matched/totalOrders*100)) : 0;
+
+  // Container status counts
+  const completed = list.filter(r=>/deliver|complete|เสร็จ|release/i.test(getVal(r, CONFIG.FIELD_HINTS.status)||'')).length;
+  const inProgress = list.filter(r=>/progress|transit|loading|ขนส่ง/i.test(getVal(r, CONFIG.FIELD_HINTS.status)||'')).length;
+  const pendingStatus = list.filter(r=>/pending|รอ/i.test(getVal(r, CONFIG.FIELD_HINTS.status)||'')).length;
+
+  // Avg times
+  const waitHrs=[], loadHrs=[], releaseHrs=[], totalHrs=[];
+  list.forEach(r=>{
+    const start = parseTimeVal(getVal(r, CONFIG.FIELD_HINTS.startLoading));
+    const finish = parseTimeVal(getVal(r, CONFIG.FIELD_HINTS.finishLoading));
+    const release = parseTimeVal(getVal(r, CONFIG.FIELD_HINTS.releaseTime));
+    const arrival = parseTimeVal(getVal(r, CONFIG.FIELD_HINTS.arrival));
+    const w = hoursBetween(arrival, start); if(w!==null) waitHrs.push(w);
+    const l = hoursBetween(start, finish); if(l!==null) loadHrs.push(l);
+    const rl = hoursBetween(finish, release); if(rl!==null) releaseHrs.push(rl);
+    const tt = hoursBetween(arrival, release); if(tt!==null) totalHrs.push(tt);
+  });
+  const avg = arr => arr.length ? arr.reduce((s,x)=>s+x,0)/arr.length : 0;
+
+  const statusEntries = [[p.completed,completed],[p.inProgress,inProgress],[p.pendingCard,pendingStatus]].filter(e=>e[1]>0);
+  const portEntries = toEntries(groupCount(list, CONFIG.FIELD_HINTS.port), 6);
+  const completionPct = list.length ? Math.round(completed/list.length*100) : 0;
+
+  renderProgressFromPayload(el, p, {
+    total: list.length, completed, inProgress, pending: pendingStatus, completedPct: completionPct,
+    orderProgress: { totalOrders, matched, pending: pendingCount, unmatched: unmatchedCount, pct: progressPct },
+    avgTimes: { waitTime: avg(waitHrs), loadingTime: avg(loadHrs), releaseProcess: avg(releaseHrs), totalTime: avg(totalHrs) },
+    byPort: Object.fromEntries(portEntries),
+    _statusEntries: statusEntries
+  });
+}
+
+function renderProgressFromPayload(el, p, d){
+  const op = d.orderProgress || {totalOrders:0,matched:0,pending:0,unmatched:0,pct:0};
+  const at = d.avgTimes || {waitTime:0,loadingTime:0,releaseProcess:0,totalTime:0};
+  const statusEntries = d._statusEntries || [[p.completed,d.completed||0],[p.inProgress,d.inProgress||0],[p.pendingCard,d.pending||0]].filter(e=>e[1]>0);
+  const portEntries = toEntries(d.byPort||{}, 6);
+  const progressPct = Math.round(op.pct || 0);
+  const completionPct = Math.round(d.completedPct || 0);
+
+  el.querySelector('.dynamic').innerHTML = `
+    <div class="progress-panel">
+      <div class="progress-head"><h3>${p.title}</h3></div>
+      <div class="ptrack"><div class="pfill" style="width:${progressPct}%">${progressPct}%</div></div>
+      <div class="progress-sub">${op.matched} / ${op.totalOrders} ${p.matched} &nbsp;·&nbsp; ${p.pending}: ${op.pending} &nbsp;·&nbsp; ${p.unmatched}: ${op.unmatched}</div>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[0]}"></span><span class="label">${p.totalToday}</span></div><div class="value">${d.total||0}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[1]}"></span><span class="label">${p.completed}</span></div><div class="value">${d.completed||0}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[2]}"></span><span class="label">${p.inProgress}</span></div><div class="value">${d.inProgress||0}</div></div>
+      <div class="kpi"><div class="top"><span class="swatch" style="background:${PALETTE[3]}"></span><span class="label">${p.pendingCard}</span></div><div class="value">${d.pending||0}</div></div>
+    </div>
+    <div class="completion-panel">
+      <div class="progress-head"><h3>${p.completionTitle}</h3></div>
+      <div class="ptrack"><div class="pfill" style="width:${completionPct}%">${completionPct}%</div></div>
+      <div class="progress-sub">${d.completed||0} / ${d.total||0} ${p.completionSub}</div>
+    </div>
+    <div class="time-row">
+      <div class="time-card"><div class="tlabel">${p.avgWait}</div><div class="tvalue">${fmtHrs(at.waitTime)} ${p.hrsUnit}</div></div>
+      <div class="time-card"><div class="tlabel">${p.avgLoading}</div><div class="tvalue">${fmtHrs(at.loadingTime)} ${p.hrsUnit}</div></div>
+      <div class="time-card"><div class="tlabel">${p.avgRelease}</div><div class="tvalue">${fmtHrs(at.releaseProcess)} ${p.hrsUnit}</div></div>
+      <div class="time-card"><div class="tlabel">${p.avgTotal}</div><div class="tvalue">${fmtHrs(at.totalTime)} ${p.hrsUnit}</div></div>
+    </div>
+    <div class="chart-row" style="margin-bottom:0; flex:1;">
+      <div class="chart-panel donut-panel"><h3 style="align-self:flex-start">${t('chart.statusDist')}</h3><div id="donut-progress"></div></div>
+      <div class="chart-panel bars-panel"><h3>${t('chart.byPort')}</h3><div id="bars-progress"></div></div>
+    </div>`;
+  renderDonut('donut-progress', statusEntries, t('centerLabel.shipments'));
+  renderBars('bars-progress', portEntries);
+}
+
+function emptyState(msg){
+  return `<div class="empty-state"><div class="big">${msg}</div><div>${t('empty.hint')}</div></div>`;
+}
+
+/* =====================================================================
+   Page shell + rotation
+   ===================================================================== */
+const PAGE_IDS = ['shipments','trucks','orders','progress'];
+
+function buildPages(){
+  const main = document.getElementById('pages');
+  main.innerHTML = PAGE_IDS.map((id,i)=>`
+    <section class="page ${i===currentPage?'active':''}" id="page-${id}">
+      <div class="page-head">
+        <div><div class="page-eyebrow">${t('pages.'+id+'.eyebrow')}</div><div class="page-title">${t('pages.'+id+'.title')}</div></div>
+      </div>
+      <div class="dynamic" style="flex:1; min-height:0; display:flex; flex-direction:column;"></div>
+    </section>`).join('');
+
+  const dots = document.getElementById('dots');
+  dots.innerHTML = PAGE_IDS.map((_,i)=>`<div class="pdot ${i===currentPage?'active':''}" data-i="${i}"></div>`).join('');
+  document.getElementById('pageLabel').textContent = t('pages.'+PAGE_IDS[currentPage]+'.title');
+}
+
+let currentPage = 0;
+function goToPage(i){
+  document.querySelectorAll('.page').forEach((el,idx)=>el.classList.toggle('active', idx===i));
+  document.querySelectorAll('.pdot').forEach((el,idx)=>el.classList.toggle('active', idx===i));
+  document.getElementById('pageLabel').textContent = t('pages.'+PAGE_IDS[i]+'.title');
+  currentPage = i;
+}
+
+let rotateStart = Date.now();
+function rotateLoop(){
+  const elapsed = Date.now() - rotateStart;
+  const pct = Math.min(100, (elapsed / CONFIG.ROTATE_MS) * 100);
+  document.getElementById('pulseFill').style.width = pct + '%';
+  if(elapsed >= CONFIG.ROTATE_MS){
+    goToPage((currentPage + 1) % PAGE_IDS.length);
+    rotateStart = Date.now();
+  }
+  requestAnimationFrame(rotateLoop);
+}
+
+function tickClock(){
+  const now = new Date();
+  const locale = LANG==='th' ? 'th-TH' : 'en-US';
+  document.getElementById('clockTime').textContent = now.toLocaleTimeString(locale, {hour12:false});
+  document.getElementById('clockDate').textContent = now.toLocaleDateString(locale, {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+}
+
+/* ---------- Language toggle ---------- */
+function applyLanguage(){
+  document.getElementById('deptLine').textContent = t('dept');
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active', b.dataset.lang===LANG));
+  setConn(STATE.connKind, STATE.connKey);
+  buildPages();
+  goToPage(currentPage);
+  tickClock();
+  if(STATE.raw) render();
+}
+document.getElementById('langToggle').addEventListener('click', e=>{
+  const btn = e.target.closest('.lang-btn'); if(!btn) return;
+  if(btn.dataset.lang===LANG) return;
+  LANG = btn.dataset.lang;
+  applyLanguage();
+});
+
+/* ---------- Init ---------- */
+buildPages();
+tickClock(); setInterval(tickClock, 1000);
+fetchData();
+setInterval(fetchData, CONFIG.REFRESH_MS);
+requestAnimationFrame(rotateLoop);
+
+document.getElementById('dots').addEventListener('click', e=>{
+  const t = e.target.closest('.pdot'); if(!t) return;
+  goToPage(parseInt(t.dataset.i)); rotateStart = Date.now();
+});
+</script>
+</body>
+</html>
